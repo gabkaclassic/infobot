@@ -51,7 +51,7 @@ async def entrypoint(message: types.Message):
         if node.image:
             with open(node.image, 'rb') as image:
                 await message.answer_photo(photo=image)
-        await message.answer(node.text, reply_markup=get_keyboard_from_choices(node.choices), parse_mode='HTML')
+        await message.answer(node.text, reply_markup=get_keyboard_from_choices(node.choices), parse_mode='MarkdownV2')
 
 
 async def main():

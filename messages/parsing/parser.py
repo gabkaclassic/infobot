@@ -18,7 +18,7 @@ def parse_message_tree():
 
             parts = line.split('|')
             node_id = parts[0].strip()
-            text = parts[1].strip().replace('\\n', '\n')
+            text = parts[1].strip().replace('\\n', '\n').replace('.', '\.')
             short_text = parts[2].strip()
             image = get_image_path(parts[3].strip()) if parts[3].strip() else None
             node = MessageNode(text, short_text, image)
