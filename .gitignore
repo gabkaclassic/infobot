@@ -1,6 +1,6 @@
 .venv
 test.py
 test
-messages/parsing/trees/*
+trees/*
 .env
 *.jpg
