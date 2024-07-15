@@ -10,15 +10,18 @@ def parse_message_tree():
 
     with open(file_path, 'r', encoding='utf-8') as file:
         for line in file:
-            if not line:
+            if not line.strip():
                 continue
 
             parts = line.split('|')
             text = (
                 parts[1].strip()
                 .replace('\\n', '\n')
-                .replace('.\n', '\.\n')
+                .replace('.', '\.')
+                .replace('!', '\!')
                 .replace('-', '\-')
+                .replace('(', '\(')
+                .replace(')', '\)')
             )
             node_id = parts[0].strip()
             short_text = parts[2].strip()
