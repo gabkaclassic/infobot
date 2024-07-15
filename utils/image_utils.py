@@ -33,7 +33,7 @@ def compress_image(image_path, target_size_kb=450):
 
 def resize_image(image_path):
     min_size = 10
-    max_size = 1500
+    max_size = 2560
 
     with Image.open(image_path) as img:
         img_width = img.width
