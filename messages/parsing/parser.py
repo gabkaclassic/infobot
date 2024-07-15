@@ -9,7 +9,7 @@ def get_image_path(filename: str):
 
 def parse_message_tree():
     messages_tree = None
-    file_path = os.path.join('messages', 'parsing', 'trees', 'test')
+    file_path = os.path.join('messages', 'parsing', 'trees', 'tree.txt')
 
     with open(file_path, 'r', encoding='utf-8') as file:
         for line in file:
@@ -17,8 +17,13 @@ def parse_message_tree():
                 continue
 
             parts = line.split('|')
+            text = (
+                parts[1].strip()
+                .replace('\\n', '\n')
+                .replace('.\n', '\.\n')
+                .replace('-', '\-')
+            )
             node_id = parts[0].strip()
-            text = parts[1].strip().replace('\\n', '\n').replace('.', '\.')
             short_text = parts[2].strip()
             image = get_image_path(parts[3].strip()) if parts[3].strip() else None
             node = MessageNode(text, short_text, image)
