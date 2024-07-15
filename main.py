@@ -19,13 +19,13 @@ dp = Dispatcher()
 def get_keyboard_from_choices(choices):
     button_list = []
     for choice, node in choices.items():
-        button_list.append(
+        button_list.append([
             types.InlineKeyboardButton(
                 text=node.short_text,
                 callback_data=choice
             )
-        )
-    reply_markup = InlineKeyboardMarkup(inline_keyboard=[button_list])
+        ])
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=button_list)
     return reply_markup
 
 
@@ -36,22 +36,32 @@ async def handle_callback_query(call: types.CallbackQuery):
     node = messages_tree.get_node(call.data)
 
     if node:
+        reply_markup = get_keyboard_from_choices(node.choices)
         if node.image:
             image = FSInputFile(node.image)
-            await call.message.answer_photo(image)
-
-        await call.message.answer(node.text, reply_markup=get_keyboard_from_choices(node.choices),
-                                  parse_mode="Markdown")
+            if node.text:
+                await call.message.answer_photo(image)
+                await call.message.answer(node.text, reply_markup=reply_markup, parse_mode='MarkdownV2')
+            else:
+                await call.message.answer_photo(image, reply_markup=reply_markup)
+        elif node.text:
+            await call.message.answer(node.text, reply_markup=reply_markup, parse_mode='MarkdownV2')
 
 
 @dp.message(Command('start'))
 async def entrypoint(message: types.Message):
     node = messages_tree
     if node:
+        reply_markup = get_keyboard_from_choices(node.choices)
         if node.image:
-            with open(node.image, 'rb') as image:
-                await message.answer_photo(photo=image)
-        await message.answer(node.text, reply_markup=get_keyboard_from_choices(node.choices), parse_mode='MarkdownV2')
+            image = FSInputFile(node.image)
+            if node.text:
+                await message.answer_photo(image)
+                await message.answer(node.text, reply_markup=reply_markup, parse_mode='MarkdownV2')
+            else:
+                await message.answer_photo(image, reply_markup=reply_markup)
+        elif node.text:
+            await message.answer(node.text, reply_markup=reply_markup, parse_mode='MarkdownV2')
 
 
 async def main():
