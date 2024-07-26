@@ -19,6 +19,8 @@ def parse_message_tree():
                 .replace('\\n', '\n')
                 .replace('.', '\.')
                 .replace('!', '\!')
+                .replace('#', '\#')
+                .replace('=', '\=')
                 .replace('-', '\-')
                 .replace('(', '\(')
                 .replace(')', '\)')
