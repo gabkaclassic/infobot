@@ -2,7 +2,10 @@ import os
 
 from messages.message_node import MessageNode
 from utils.image_utils import prepare_image, get_image_path
+from uuid import uuid4 as uuid
 
+
+nodes_ids = dict()
 
 def parse_message_tree():
     messages_tree = None
@@ -20,6 +23,7 @@ def parse_message_tree():
                 .replace('.', '\.')
                 .replace('!', '\!')
                 .replace('#', '\#')
+                .replace('+', '\+')
                 .replace('=', '\=')
                 .replace('-', '\-')
                 .replace('(', '\(')
@@ -34,6 +38,9 @@ def parse_message_tree():
             node = MessageNode(text, short_text, image_path)
             if messages_tree:
                 messages_tree.add_node(node_id, node)
+                short_node_id = str(uuid())
+                nodes_ids[short_node_id] = node_id
+                nodes_ids[node_id] = short_node_id
             else:
                 messages_tree = node
     return messages_tree

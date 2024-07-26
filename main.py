@@ -22,7 +22,7 @@ def get_keyboard_from_choices(choices):
         button_list.append([
             types.InlineKeyboardButton(
                 text=node.short_text,
-                callback_data=choice
+                callback_data=nodes_ids.get(choice)
             )
         ])
     reply_markup = InlineKeyboardMarkup(inline_keyboard=button_list)
@@ -31,22 +31,25 @@ def get_keyboard_from_choices(choices):
 
 @dp.callback_query(lambda c: True)
 async def handle_callback_query(call: types.CallbackQuery):
-    await call.answer()
+    try:
+        await call.answer()
+        node_id = nodes_ids.get(call.data)
+        node = messages_tree.get_node(node_id)
 
-    node = messages_tree.get_node(call.data)
-
-    if node:
-        reply_markup = get_keyboard_from_choices(node.choices)
-        if node.image:
-            image = FSInputFile(node.image)
-            if node.text:
-                await call.message.answer_photo(image)
+        if node:
+            reply_markup = get_keyboard_from_choices(node.choices)
+            if node.image:
+                image = FSInputFile(node.image)
+                if node.text:
+                    await call.message.answer_photo(image)
+                    await call.message.answer(node.text, reply_markup=reply_markup, parse_mode='MarkdownV2')
+                else:
+                    await call.message.answer_photo(image, reply_markup=reply_markup)
+            elif node.text:
                 await call.message.answer(node.text, reply_markup=reply_markup, parse_mode='MarkdownV2')
-            else:
-                await call.message.answer_photo(image, reply_markup=reply_markup)
-        elif node.text:
-            await call.message.answer(node.text, reply_markup=reply_markup, parse_mode='MarkdownV2')
-
+    except Exception as e:
+        logging.error(f"Error handling callback query: {e}")
+        await call.answer(text="An error occurred, please try again later.")
 
 @dp.message(Command('start'))
 async def entrypoint(message: types.Message):
@@ -70,5 +73,6 @@ async def main():
 
 if __name__ == "__main__":
     from messages.message_tree import messages_tree
+    from messages.parsing.parser import nodes_ids
 
     asyncio.run(main())
