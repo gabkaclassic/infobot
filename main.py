@@ -40,6 +40,7 @@ async def handle_callback_query(call: types.CallbackQuery):
             reply_markup = get_keyboard_from_choices(node.choices)
             if node.image:
                 image = FSInputFile(node.image)
+                await call.message.answer(node.short_text)
                 if node.text:
                     await call.message.answer_photo(image)
                     await call.message.answer(node.text, reply_markup=reply_markup, parse_mode='MarkdownV2')
