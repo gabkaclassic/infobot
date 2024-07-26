@@ -2,10 +2,15 @@ import os
 
 from messages.message_node import MessageNode
 from utils.image_utils import prepare_image, get_image_path
-from uuid import uuid4 as uuid
+import hashlib
 
 
 nodes_ids = dict()
+
+def get_hash(input_string: str, algorithm: str = 'sha256') -> str:
+    hash_function = hashlib.new(algorithm)
+    hash_function.update(input_string.encode('utf-8'))
+    return hash_function.hexdigest()
 
 def parse_message_tree():
     messages_tree = None
@@ -38,7 +43,7 @@ def parse_message_tree():
             node = MessageNode(text, short_text, image_path)
             if messages_tree:
                 messages_tree.add_node(node_id, node)
-                short_node_id = str(uuid())
+                short_node_id = get_hash(node_id)
                 nodes_ids[short_node_id] = node_id
                 nodes_ids[node_id] = short_node_id
             else:
