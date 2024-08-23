@@ -1,6 +1,6 @@
 import os
 
-from messages.message_node import MessageNode
+from bot.messages.message_node import MessageNode
 from utils.image_utils import prepare_image, get_image_path
 import hashlib
 

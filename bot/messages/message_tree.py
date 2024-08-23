@@ -1,5 +1,5 @@
-from messages.message_node import MessageNode
-from messages.parsing.parser import parse_message_tree
+from bot.messages.message_node import MessageNode
+from bot.messages.parsing.parser import parse_message_tree
 
 messages_tree = parse_message_tree()
 
