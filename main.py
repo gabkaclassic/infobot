@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from bot.bot import start_bot
-from webhooks.app import start_app
+from payment.app import start_app
 from dotenv import load_dotenv
 
 load_dotenv()
