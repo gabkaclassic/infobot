@@ -4,7 +4,7 @@ test.py
 test
 trees/*
 .env
-*.jpg
 *.pyc
-.idea
-.gigaide
+*.jpg
+*.idea
+*.gigaide

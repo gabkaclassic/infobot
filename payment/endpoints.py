@@ -1,15 +1,18 @@
 from fastapi import FastAPI, Request, HTTPException, APIRouter
-from yookassa.domain.notification import WebhookNotificationEventType, WebhookNotificationFactory
+from yookassa.domain.notification import (
+    WebhookNotificationEventType,
+    WebhookNotificationFactory,
+)
 from yookassa.domain.common import SecurityHelper
 from db.redis.client import payments
 from bot.bot import success_payment_message, failure_payment_message
 
 app = FastAPI()
 
-router = APIRouter(prefix='/infobot')
+router = APIRouter(prefix="/infobot")
 
 
-@router.post('/payment')
+@router.post("/payment")
 async def webhook(request: Request):
     ip = request.client.host
     if not SecurityHelper().is_ip_trusted(ip):
@@ -28,18 +31,17 @@ async def webhook(request: Request):
             if result:
                 await success_payment_message(client_id)
             else:
-                print('Failed to close payment')
+                print("Failed to close payment")
                 raise HTTPException(status_code=500)
         else:
             result = await payments.cancel_payment(client_id, payment_id)
             if result:
                 await failure_payment_message(client_id, payment_status)
             else:
-                print('Failed to close payment')
+                print("Failed to close payment")
                 raise HTTPException(status_code=500)
 
         return {"status": "ok"}
 
     except Exception:
         raise HTTPException(status_code=400)
-

@@ -8,10 +8,9 @@ from db.redis.client import initialize_db, close_connections, check_db
 from payment.client import configure_payment
 
 load_dotenv()
-host = os.environ.get('HOST')
-port = int(os.environ.get('PORT'))
-dev = bool(os.environ.get('DEV'))
-
+host = os.environ.get("HOST")
+port = int(os.environ.get("PORT"))
+dev = bool(os.environ.get("DEV"))
 
 
 @asynccontextmanager
@@ -28,4 +27,4 @@ app.include_router(yookassa_router)
 
 
 async def start_app():
-    uvicorn.run('payment.app:app', host=host, port=port, reload=dev)
+    uvicorn.run("payment.app:app", host=host, port=port, reload=dev)
