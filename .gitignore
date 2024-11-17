@@ -6,3 +6,5 @@ trees/*
 .env
 *.jpg
 *.pyc
+.idea
+.gigaide
