@@ -17,7 +17,6 @@ webhook_url = os.environ.get("PAYMENT_WEBHOOK_URL")
 cost = float(os.environ.get("PAYMENT_COST"))
 
 
-
 async def create_payment(client_id: str) -> str:
     receipt = Receipt()
     receipt.tax_system_code = 1
@@ -37,10 +36,12 @@ async def create_payment(client_id: str) -> str:
     builder = PaymentRequestBuilder()
     builder.set_amount({"value": cost, "currency": Currency.RUB}).set_capture(
         True
-    ).set_description(description).set_receipt(receipt).set_confirmation({
-        "type": ConfirmationType.REDIRECT,
-        "return_url": webhook_url,
-    })
+    ).set_description(description).set_receipt(receipt).set_confirmation(
+        {
+            "type": ConfirmationType.REDIRECT,
+            "return_url": webhook_url,
+        }
+    )
 
     request = builder.build()
     payment = json.loads(Payment.create(request).json())
