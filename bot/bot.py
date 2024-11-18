@@ -42,7 +42,7 @@ async def check_payment(message: types.Message) -> bool:
         return True
 
     client_id = str(message.chat.id)
-    payment_info = payments.users.get_payment_info(client_id)
+    payment_info = await payments.users.get_payment_info(client_id)
     paid = payment_info.get("paid", False)
     confirmation_url = payment_info.get("confirmation_url", False)
 

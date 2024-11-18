@@ -25,9 +25,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    from bot.messages.parsing.parser import parse_message_tree
-
-    tree_path = os.environ.get("TREE_PATH")
-    messages_tree, nodes_ids = parse_message_tree(tree_path)
-
     asyncio.run(main())

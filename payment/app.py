@@ -27,4 +27,6 @@ app.include_router(yookassa_router)
 
 
 async def start_app():
-    uvicorn.run("payment.app:app", host=host, port=port, reload=dev)
+    config = uvicorn.Config(app, host=host, port=port, reload=dev)
+    server = uvicorn.Server(config)
+    await server.serve()
