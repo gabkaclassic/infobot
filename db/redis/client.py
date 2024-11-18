@@ -101,12 +101,12 @@ class PaymentManager:
     async def create_payment(
         self, client_id: str, payment_id: str, confirmation_url: str
     ) -> str:
-        async with self.payments.redis.client.pipeline(
+        async with self.payments.redis.pipeline(
             transaction=True
         ) as pipe_payments:
             pipe_payments.set(payment_id, client_id)
 
-            async with self.users.redis.client.pipeline(transaction=True) as pipe_users:
+            async with self.users.redis.pipeline(transaction=True) as pipe_users:
                 pipe_users.set(
                     client_id,
                     json.dumps({"confirmation_url": confirmation_url, "paid": False}),
@@ -123,10 +123,10 @@ class PaymentManager:
                     await self.payments.close_payment(payment_id)
 
     async def confirm_payment(self, client_id: str, payment_id: str) -> bool:
-        async with self.users.redis.client.pipeline(transaction=True) as pipe_users:
+        async with self.users.redis.pipeline(transaction=True) as pipe_users:
             pipe_users.set(client_id, json.dumps({"paid": True}))
 
-            async with self.payments.redis.client.pipeline(
+            async with self.payments.redis.pipeline(
                 transaction=True
             ) as pipe_payments:
                 pipe_payments.delete(payment_id)
@@ -141,7 +141,7 @@ class PaymentManager:
         async with self.users.redis.client.pipeline(transaction=True) as pipe_users:
             pipe_users.set(client_id, json.dumps({"paid": False}))
 
-            async with self.payments.redis.client.pipeline(
+            async with self.payments.redis.pipeline(
                 transaction=True
             ) as pipe_payments:
                 pipe_payments.delete(payment_id)
