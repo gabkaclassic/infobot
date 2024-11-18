@@ -34,7 +34,7 @@ class RedisDatabase:
     async def get_key(self, key):
         try:
             value = await self.redis.get(key)
-            return json.loads(value) if value else None
+            return json.loads(value) if value else dict()
         except Exception as e:
             print(e)
 

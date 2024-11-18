@@ -56,6 +56,8 @@ async def check_payment(message: types.Message) -> bool:
         await confirm_create_payment(message, confirmation_url)
         return False
 
+    return paid
+
 
 @dp.callback_query(lambda c: True)
 async def handle_callback_query(call: types.CallbackQuery):
