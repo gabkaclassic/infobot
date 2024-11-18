@@ -36,7 +36,7 @@ async def create_payment(client_id: str) -> str:
 
     builder = PaymentRequestBuilder()
     builder.set_amount({"value": cost, "currency": Currency.RUB}).set_capture(
-        False
+        True
     ).set_description(description).set_receipt(receipt).set_confirmation({
         "type": ConfirmationType.REDIRECT,
         "return_url": webhook_url,
