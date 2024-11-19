@@ -9,7 +9,7 @@ from payment.app import start_app
 
 load_dotenv()
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 enable_payments = os.environ.get("PAYMENT_ENABLE", "True").lower() == "true"
 

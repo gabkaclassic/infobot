@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 import os
 from redis import asyncio as aioredis
 import json, asyncio
+from logger_config import logger
 
 load_dotenv()
 
@@ -28,7 +29,7 @@ class RedisDatabase:
             await self.redis.set(key, json.dumps(value))
             return True
         except Exception as e:
-            print(e)
+            logger.error(f'Set key error: {e}', exc_info=True)
             return False
 
     async def get_key(self, key):
@@ -36,13 +37,15 @@ class RedisDatabase:
             value = await self.redis.get(key)
             return json.loads(value) if value else dict()
         except Exception as e:
-            print(e)
+            logger.error(f'Get key error: {e}', exc_info=True)
+
 
     async def delete(self, key):
         try:
             return await self.redis.delete(key)
         except Exception as e:
-            print(e)
+            logger.error(f'Delete record error: {e}', exc_info=True)
+
 
     async def close(self):
         await self.redis.close()
@@ -101,6 +104,7 @@ class PaymentManager:
     async def create_payment(
         self, client_id: str, payment_id: str, confirmation_url: str
     ) -> str:
+        logger.info(f'Create payment {payment_id} for client {client_id}: {confirmation_url}')
         async with self.payments.redis.pipeline(transaction=True) as pipe_payments:
             pipe_payments.set(payment_id, client_id)
 
@@ -121,6 +125,7 @@ class PaymentManager:
                     await self.payments.close_payment(payment_id)
 
     async def confirm_payment(self, client_id: str, payment_id: str) -> bool:
+        logger.info(f'Confirm payment {payment_id} for client {client_id}')
         async with self.users.redis.pipeline(transaction=True) as pipe_users:
             pipe_users.set(client_id, json.dumps({"paid": True}))
 
@@ -134,6 +139,7 @@ class PaymentManager:
                 return all(results_users) and all(results_payments)
 
     async def cancel_payment(self, client_id: str, payment_id: str) -> bool:
+        logger.info(f'Cancel payment {payment_id} for client {client_id}')
         async with self.users.redis.client.pipeline(transaction=True) as pipe_users:
             pipe_users.set(client_id, json.dumps({"paid": False}))
 

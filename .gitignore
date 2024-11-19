@@ -9,3 +9,4 @@ trees/*
 *.idea
 *.gigaide
 redisdata
+*.log
