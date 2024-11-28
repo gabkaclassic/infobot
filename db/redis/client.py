@@ -72,13 +72,15 @@ class UserDatabase(RedisDatabase):
     async def confirm_payment(self, client_id: str) -> bool:
         info = await self.get_key(client_id)
         info["paid"] = True
-        del info["confirmation_url"]
+        if "confirmation_url" in info:
+            del info["confirmation_url"]
         return await self.set_key(client_id, info)
 
     async def cancel_payment(self, client_id: str) -> bool:
         info = await self.get_key(client_id)
         info["paid"] = False
-        del info["confirmation_url"]
+        if "confirmation_url" in info:
+            del info["confirmation_url"]
         return await self.set_key(client_id, info)
 
 
