@@ -163,6 +163,26 @@ async def entrypoint(message: types.Message):
 
 
 async def confirm_create_payment(message: types.Message, confirmation_url: str):
+    
+    await bot.send_message(
+        message.chat.id,
+        """
+        Здравствуйте!
+Вы пришли ко мне не случайно, наверняка вам интересно ВСЕ ПРО ИГРУ и про детское развитие тоже. 
+
+Наш бот — структурный, это значит, что все ответы в нем уже заложены и выверены экспертом.
+
+Далее вам предстоит определиться, какая роль  в знакомстве с информацией подходит вам больше — РОДИТЕЛЯ или ПЕДАГОГА. 
+
+— вся ветка, сделанная для родителей, будет очень интересна начинающим разбираться в игре педагогам, в ее основе — особенности возраста.
+— продвинутым родителям будет полезна ветка для педагогов.
+Пробуйте!
+
+Оплата бота — разовая история. Заплатив единожды, вы будете пользоваться им постоянно.
+Пусть будет польза и пусть у детства будет ИГРА!
+        """,
+    )
+    
     await bot.send_message(
         message.chat.id,
         f"Пожалуйста, оплатите работу бота: \n {confirmation_url}",
@@ -172,8 +192,9 @@ async def confirm_create_payment(message: types.Message, confirmation_url: str):
 async def success_payment_message(client_id: str):
     await bot.send_message(
         client_id,
-        "Ваша оплата прошла успешно, впредь вы можете пользоваться нашим ботом",
+        "Ваша оплата прошла успешно, впредь вы можете пользоваться нашим ботом: /start",
     )
+
 
 
 async def failure_payment_message(client_id: str, status: str):
