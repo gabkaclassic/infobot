@@ -22,11 +22,15 @@ async def webhook(request: Request):
         raise HTTPException(status_code=400)
     event_json = await request.json()
     try:
+        logger.info(f"Event json: {event_json}")
         notification_object = WebhookNotificationFactory().create(event_json)
         response_object = notification_object.object
-        payment_id = response_object.payment_id
-        client_id = await payments.payments.get_payment_info(payment_id)
+        
+    
         payment_status = notification_object.event
+        payment_id = get_id_by_status(response_object, payment_status)
+        client_id = await payments.payments.get_key(payment_id) 
+        
         logger.info(f"Payment {payment_id} status: {payment_status} for client {client_id}")
 
         if payment_status == WebhookNotificationEventType.PAYMENT_SUCCEEDED:
@@ -51,5 +55,24 @@ async def webhook(request: Request):
 
         return {"status": "ok"}
 
-    except Exception:
+    except Exception as e:
+        logger.error(f'Webhook error: {e}', exc_info=True)
         raise HTTPException(status_code=400)
+
+
+def get_id_by_status(event_object, status):
+    if status in {
+        WebhookNotificationEventType.PAYMENT_SUCCEEDED,
+        WebhookNotificationEventType.PAYMENT_WAITING_FOR_CAPTURE,
+        WebhookNotificationEventType.PAYMENT_CANCELED,
+        WebhookNotificationEventType.DEAL_CLOSED,
+        WebhookNotificationEventType.PAYOUT_SUCCEEDED,
+        WebhookNotificationEventType.PAYOUT_CANCELED,
+    }:
+        return event_object.id
+    elif status in {
+        WebhookNotificationEventType.REFUND_SUCCEEDED
+    }:
+        return event_object.payment_id
+    else:
+        return None
