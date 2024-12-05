@@ -10,6 +10,7 @@ from db.redis.client import payments
 from payment.client import create_payment
 from aiogram.types import ContentType
 from bot.setup import handle_text_file
+from bot.messages.parsing.parser import prepare_text
 
 load_dotenv()
 
@@ -20,6 +21,7 @@ dp = Dispatcher()
 ADMINS = [int(id) for id in os.environ.get("ADMINS").split(",")]
 enable_setup = os.environ.get("SETUP_ENABLE", "False").lower() == "true"
 enable_payments = os.environ.get("PAYMENT_ENABLE", "True").lower() == "true"
+greeting_text = prepare_text(os.environ.get("GREETING", ""))
 
 
 def get_keyboard_from_choices(choices):
@@ -164,24 +166,12 @@ async def entrypoint(message: types.Message):
 
 async def confirm_create_payment(message: types.Message, confirmation_url: str):
     
-    await bot.send_message(
-        message.chat.id,
-        """
-        Здравствуйте!
-Вы пришли ко мне не случайно, наверняка вам интересно ВСЕ ПРО ИГРУ и про детское развитие тоже. 
-
-Наш бот — структурный, это значит, что все ответы в нем уже заложены и выверены экспертом.
-
-Далее вам предстоит определиться, какая роль  в знакомстве с информацией подходит вам больше — РОДИТЕЛЯ или ПЕДАГОГА. 
-
-— вся ветка, сделанная для родителей, будет очень интересна начинающим разбираться в игре педагогам, в ее основе — особенности возраста.
-— продвинутым родителям будет полезна ветка для педагогов.
-Пробуйте!
-
-Оплата бота — разовая история. Заплатив единожды, вы будете пользоваться им постоянно.
-Пусть будет польза и пусть у детства будет ИГРА!
-        """,
-    )
+    if greeting_text:
+        await bot.send_message(
+            message.chat.id,
+            greeting_text,
+            parse_mode="MarkdownV2"
+        )
     
     await bot.send_message(
         message.chat.id,
