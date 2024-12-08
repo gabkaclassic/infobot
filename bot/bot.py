@@ -78,23 +78,23 @@ async def handle_callback_query(call: types.CallbackQuery):
 
         if node:
             reply_markup = get_keyboard_from_choices(node.choices)
-            await call.message.answer(node.short_text)
+            await call.message.answer(node.short_text, protect_content=True)
             if node.image:
                 image = FSInputFile(node.image)
                 if node.text:
-                    await call.message.answer_photo(image)
+                    await call.message.answer_photo(image, protect_content=True)
                     await call.message.answer(
-                        node.text, reply_markup=reply_markup, parse_mode="MarkdownV2"
+                        node.text, reply_markup=reply_markup, parse_mode="MarkdownV2", protect_content=True
                     )
                 else:
                     await call.message.answer_photo(image, reply_markup=reply_markup)
             elif node.text:
                 await call.message.answer(
-                    node.text, reply_markup=reply_markup, parse_mode="MarkdownV2"
+                    node.text, reply_markup=reply_markup, parse_mode="MarkdownV2", protect_content=True
                 )
     except Exception as e:
         logging.error(f"Error handling callback query: {e}")
-        await call.answer(text="An error occurred, please try again later.")
+        await call.answer(text="An error occurred, please try again later.", protect_content=True)
 
 
 @dp.message(lambda message: message.content_type == ContentType.DOCUMENT)
@@ -105,7 +105,7 @@ async def handle_document(message: types.Message):
 
     user_id = message.from_user.id
     if user_id not in ADMINS:
-        await message.reply("Вы не имеете права отправлять файлы.")
+        await message.reply("Вы не имеете права отправлять файлы.", protect_content=True)
         return
 
     document = message.document
@@ -118,7 +118,7 @@ async def handle_document(message: types.Message):
         or "/" in document.file_name
         or ".." in document.file_name
     ):
-        await message.reply("Невалидное имя файла")
+        await message.reply("Невалидное имя файла", protect_content=True)
         return
 
     file_extension = os.path.splitext(document.file_name)[1].lower()
@@ -130,7 +130,7 @@ async def handle_document(message: types.Message):
         if result:
             messages_tree, nodes_ids = result
     else:
-        await message.reply("Пожалуйста, отправьте файл формата txt")
+        await message.reply("Пожалуйста, отправьте файл формата txt", protect_content=True)
 
 
 @dp.message(Command("id"))
@@ -152,15 +152,15 @@ async def entrypoint(message: types.Message):
         if node.image:
             image = FSInputFile(node.image)
             if node.text:
-                await message.answer_photo(image)
+                await message.answer_photo(image, protect_content=True)
                 await message.answer(
-                    node.text, reply_markup=reply_markup, parse_mode="MarkdownV2"
+                    node.text, reply_markup=reply_markup, parse_mode="MarkdownV2", protect_content=True
                 )
             else:
-                await message.answer_photo(image, reply_markup=reply_markup)
+                await message.answer_photo(image, reply_markup=reply_markup, protect_content=True)
         elif node.text:
             await message.answer(
-                node.text, reply_markup=reply_markup, parse_mode="MarkdownV2"
+                node.text, reply_markup=reply_markup, parse_mode="MarkdownV2", protect_content=True
             )
 
 
