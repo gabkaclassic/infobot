@@ -143,7 +143,7 @@ class PaymentManager:
 
     async def cancel_payment(self, client_id: str, payment_id: str) -> bool:
         logger.info(f'Cancel payment {payment_id} for client {client_id}')
-        async with self.users.redis.client.pipeline(transaction=True) as pipe_users:
+        async with self.users.redis.pipeline(transaction=True) as pipe_users:
             pipe_users.set(client_id, json.dumps({"paid": False}))
 
             async with self.payments.redis.pipeline(transaction=True) as pipe_payments:
