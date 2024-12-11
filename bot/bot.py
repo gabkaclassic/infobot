@@ -132,7 +132,7 @@ async def handle_document(message: types.Message):
     else:
         await message.reply("Пожалуйста, отправьте файл формата txt", protect_content=True)
 
-@dp.message(lambda message: message.content_type == ContentType.TEXT)
+@dp.message(Command("free"))
 async def handle_admin_commands(message: types.Message):
 
     if not enable_setup:
@@ -143,23 +143,17 @@ async def handle_admin_commands(message: types.Message):
         return
 
     try:
-
         text = message.text
         cmd = text.split(' ')
-        command = cmd[0]
         if len(cmd) > 1:
             arguments = cmd[1:]   
 
-        if command == 'free':
-            ids = { int(arg) for arg in arguments }
-            await add_priveleged_users(ids)
-            await message.reply(f'Пользователи успешно добавлены: {", ".join(arguments)}')
-            
-        else:
-            await message.reply('Неизвестная команда')
+        ids = { int(arg) for arg in arguments }
+        await add_priveleged_users(ids)
+        await message.reply(f'Пользователи успешно добавлены: {", ".join(arguments)}')
             
     except Exception as e:
-        await message.reply('Ошибка выполнения команды')
+        await message.reply(f'Ошибка выполнения команды')
         
 
 @dp.message(Command("id"))
@@ -170,6 +164,7 @@ async def send_client_id(message: types.Message):
 @dp.message(Command("start"))
 async def entrypoint(message: types.Message):
 
+    
     payment_check_result = await check_payment(message)
 
     if not payment_check_result:
