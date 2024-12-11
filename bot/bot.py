@@ -144,7 +144,6 @@ async def handle_admin_commands(message: types.Message):
 
     try:
         text = message.text
-        message.get
         cmd = text.split(' ')
         if len(cmd) > 1:
             arguments = cmd[1:]   
