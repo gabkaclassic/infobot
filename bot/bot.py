@@ -154,7 +154,6 @@ async def handle_admin_commands(message: types.Message):
         await message.reply(f'Пользователи успешно добавлены: {", ".join(arguments)}')
             
     except Exception as e:
-        print(e)
         await message.reply(f'Ошибка выполнения команды')
         
 
