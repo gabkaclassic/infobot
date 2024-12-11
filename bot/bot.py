@@ -217,10 +217,13 @@ async def success_payment_message(client_id: str):
 
 
 async def failure_payment_message(client_id: str, status: str):
-    await bot.send_message(
-        client_id,
-        f"Возникла проблема с оплатой: \n{status}\n Пожалуйста, посмотрите статус оплаты в приложении или на сайте",
-    )
+    try:
+        await bot.send_message(
+            client_id,
+            f"Возникла проблема с оплатой: \n{status}\n Пожалуйста, посмотрите статус оплаты в приложении или на сайте",
+        )
+    except: 
+        pass
 
 
 async def failure_create_payment_message(message: types.Message):
