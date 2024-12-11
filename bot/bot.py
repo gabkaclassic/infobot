@@ -6,7 +6,7 @@ from aiogram.filters.command import Command
 from aiogram.types import FSInputFile
 from aiogram.types import InlineKeyboardMarkup
 from dotenv import load_dotenv
-from db.redis.client import payments
+from db.redis.client import payments, add_priveleged_users
 from payment.client import create_payment
 from aiogram.types import ContentType
 from bot.setup import handle_text_file
@@ -132,6 +132,35 @@ async def handle_document(message: types.Message):
     else:
         await message.reply("Пожалуйста, отправьте файл формата txt", protect_content=True)
 
+@dp.message(lambda message: message.content_type == ContentType.TEXT)
+async def handle_admin_commands(message: types.Message):
+
+    if not enable_setup:
+        return
+
+    user_id = message.from_user.id
+    if user_id not in ADMINS:
+        return
+
+    try:
+
+        text = message.text
+        cmd = text.split(' ')
+        command = cmd[0]
+        if len(cmd) > 1:
+            arguments = cmd[1:]   
+
+        if command == 'free':
+            ids = { int(arg) for arg in arguments }
+            await add_priveleged_users(ids)
+            await message.reply(f'Пользователи успешно добавлены: {", ".join(arguments)}')
+            
+        else:
+            await message.reply('Неизвестная команда')
+            
+    except Exception as e:
+        await message.reply('Ошибка выполнения команды')
+        
 
 @dp.message(Command("id"))
 async def send_client_id(message: types.Message):
