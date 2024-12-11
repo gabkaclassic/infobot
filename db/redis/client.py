@@ -3,6 +3,7 @@ import os
 from redis import asyncio as aioredis
 import json, asyncio
 from logger_config import logger
+from typing import Iterable, Union
 
 load_dotenv()
 
@@ -143,6 +144,10 @@ class PaymentManager:
 
     async def cancel_payment(self, client_id: str, payment_id: str) -> bool:
         logger.info(f'Cancel payment {payment_id} for client {client_id}')
+        
+        if not client_id:
+            return False
+        
         async with self.users.redis.pipeline(transaction=True) as pipe_users:
             pipe_users.set(client_id, json.dumps({"paid": False}))
 
@@ -168,10 +173,16 @@ async def check_db():
 
 async def initialize_db():
     privileged_users = os.environ.get("PAYMENT_PRIVILEGED_USERS").split(",")
+    await add_priveleged_users(privileged_users)
+
+async def add_priveleged_users(privileged_users: Union[Iterable[int], int]):
+    
+    if not isinstance(privileged_users, (list, set, tuple)):
+        privileged_users = [privileged_users]
+    
     for user in privileged_users:
         await payments.users.add_user(user, "")
         await payments.users.confirm_payment(user)
-
 
 async def close_connections():
     await payments.payments.close()
