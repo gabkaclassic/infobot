@@ -43,7 +43,12 @@ def get_keyboard_from_choices(choices):
     reply_markup = InlineKeyboardMarkup(inline_keyboard=button_list)
     return reply_markup
 
-
+async def check_payment_by_user_id(client_id: str) -> bool:
+    payment_info = await payments.users.get_payment_info(client_id)
+    paid = payment_info.get("paid", False)
+    
+    return paid 
+    
 async def check_payment(message: types.Message) -> bool:
 
     if not enable_payments:
@@ -204,6 +209,11 @@ async def give_bot(message: types.Message):
 async def handle_give_bot_response(message: types.Message):
     try:
         target_user = int(message.text.strip())
+        
+        if await check_payment_by_user_id(str(target_user)):
+            await message.reply('У пользователя с данным ID уже куплен бот')
+            return
+        
         confirmation_url = await create_payment(
             message.chat.id, target_user=target_user
         )
