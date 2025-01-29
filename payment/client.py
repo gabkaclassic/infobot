@@ -50,7 +50,9 @@ async def create_payment(client_id: str, target_user: str = None) -> str:
     confirmation_url = payment.get("confirmation", {}).get("confirmation_url")
 
     if confirmation_url:
-        return await payments.create_payment(client_id, payment_id, confirmation_url, target_user=target_user)
+        return await payments.create_payment(
+            client_id, payment_id, confirmation_url, target_user=target_user
+        )
 
 
 def configure_payment():

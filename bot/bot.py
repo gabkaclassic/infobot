@@ -66,12 +66,13 @@ async def check_payment(message: types.Message) -> bool:
 
     return paid
 
+
 async def check_user_gives_bot(message: types.Message) -> bool:
 
     if not enable_payments:
         return False
-    
-    return await user_states.check_state(message.chat.id, UserState.GIVE_BOT)    
+
+    return await user_states.check_state(message.chat.id, UserState.GIVE_BOT)
 
 
 @dp.callback_query(lambda c: True)
@@ -97,17 +98,25 @@ async def handle_callback_query(call: types.CallbackQuery):
                 if node.text:
                     await call.message.answer_photo(image, protect_content=True)
                     await call.message.answer(
-                        node.text, reply_markup=reply_markup, parse_mode="MarkdownV2", protect_content=True
+                        node.text,
+                        reply_markup=reply_markup,
+                        parse_mode="MarkdownV2",
+                        protect_content=True,
                     )
                 else:
                     await call.message.answer_photo(image, reply_markup=reply_markup)
             elif node.text:
                 await call.message.answer(
-                    node.text, reply_markup=reply_markup, parse_mode="MarkdownV2", protect_content=True
+                    node.text,
+                    reply_markup=reply_markup,
+                    parse_mode="MarkdownV2",
+                    protect_content=True,
                 )
     except Exception as e:
         logging.error(f"Error handling callback query: {e}")
-        await call.answer(text="An error occurred, please try again later.", protect_content=True)
+        await call.answer(
+            text="An error occurred, please try again later.", protect_content=True
+        )
 
 
 @dp.message(lambda message: message.content_type == ContentType.DOCUMENT)
@@ -118,7 +127,9 @@ async def handle_document(message: types.Message):
 
     user_id = message.from_user.id
     if user_id not in ADMINS:
-        await message.reply("Вы не имеете права отправлять файлы.", protect_content=True)
+        await message.reply(
+            "Вы не имеете права отправлять файлы.", protect_content=True
+        )
         return
 
     document = message.document
@@ -143,7 +154,10 @@ async def handle_document(message: types.Message):
         if result:
             messages_tree, nodes_ids = result
     else:
-        await message.reply("Пожалуйста, отправьте файл формата txt", protect_content=True)
+        await message.reply(
+            "Пожалуйста, отправьте файл формата txt", protect_content=True
+        )
+
 
 @dp.message(Command("free"))
 async def handle_admin_commands(message: types.Message):
@@ -157,17 +171,17 @@ async def handle_admin_commands(message: types.Message):
 
     try:
         text = message.text
-        cmd = text.split(' ')
+        cmd = text.split(" ")
         if len(cmd) > 1:
-            arguments = cmd[1:]   
+            arguments = cmd[1:]
 
-        ids = { int(arg) for arg in arguments }
+        ids = {int(arg) for arg in arguments}
         await add_priveleged_users(ids)
         await message.reply(f'Пользователи успешно добавлены: {", ".join(arguments)}')
-            
+
     except Exception as e:
-        await message.reply(f'Ошибка выполнения команды')
-        
+        await message.reply(f"Ошибка выполнения команды")
+
 
 @dp.message(Command("id"))
 async def send_client_id(message: types.Message):
@@ -177,22 +191,30 @@ async def send_client_id(message: types.Message):
 @dp.message(Command("gift"))
 async def give_bot(message: types.Message):
     access = await user_states.set_state(message.chat.id, UserState.GIVE_BOT)
-    
+
     if access:
-        await message.reply(f'Пожалуйста, пришлите ID пользователя, которому хотите подарить бота:')
+        await message.reply(
+            f"Пожалуйста, пришлите ID пользователя, которому хотите подарить бота:"
+        )
     else:
-        await message.reply(f'Ошибка в работе бота. Пожалуйста, попробуйте позже')
-        
+        await message.reply(f"Ошибка в работе бота. Пожалуйста, попробуйте позже")
+
+
 @dp.message(GiveBotFilter())
 async def handle_give_bot_response(message: types.Message):
     try:
         target_user = int(message.text.strip())
-        confirmation_url = await create_payment(message.chat.id, target_user=target_user)
+        confirmation_url = await create_payment(
+            message.chat.id, target_user=target_user
+        )
         if not confirmation_url:
             await failure_create_payment_message(message)
         await user_states.set_state(message.chat.id, UserState.NONE)
     except ValueError:
-        await message.reply('Неверный формат ID. Пожалуйста, отправьте корректный ID пользователя.')
+        await message.reply(
+            "Неверный формат ID. Пожалуйста, отправьте корректный ID пользователя."
+        )
+
 
 @dp.message(Command("start"))
 async def entrypoint(message: types.Message):
@@ -210,25 +232,29 @@ async def entrypoint(message: types.Message):
             if node.text:
                 await message.answer_photo(image, protect_content=True)
                 await message.answer(
-                    node.text, reply_markup=reply_markup, parse_mode="MarkdownV2", protect_content=True
+                    node.text,
+                    reply_markup=reply_markup,
+                    parse_mode="MarkdownV2",
+                    protect_content=True,
                 )
             else:
-                await message.answer_photo(image, reply_markup=reply_markup, protect_content=True)
+                await message.answer_photo(
+                    image, reply_markup=reply_markup, protect_content=True
+                )
         elif node.text:
             await message.answer(
-                node.text, reply_markup=reply_markup, parse_mode="MarkdownV2", protect_content=True
+                node.text,
+                reply_markup=reply_markup,
+                parse_mode="MarkdownV2",
+                protect_content=True,
             )
 
 
 async def confirm_create_payment(message: types.Message, confirmation_url: str):
-    
+
     if greeting_text:
-        await bot.send_message(
-            message.chat.id,
-            greeting_text,
-            parse_mode="MarkdownV2"
-        )
-    
+        await bot.send_message(message.chat.id, greeting_text, parse_mode="MarkdownV2")
+
     await bot.send_message(
         message.chat.id,
         f"Пожалуйста, оплатите работу бота: \n {confirmation_url}",
@@ -241,11 +267,13 @@ async def success_payment_for_responsible_message(client_id: str):
         "Ваша оплата прошла успешно, спасибо, что дарите другим людям прекрасное!",
     )
 
+
 async def success_payment_for_target_message(client_id: str):
     await bot.send_message(
         client_id,
         "Вам сделали подарок! Впредь вы можете пользоваться нашим ботом: /start",
     )
+
 
 async def success_payment_message(client_id: str):
     await bot.send_message(
@@ -253,13 +281,14 @@ async def success_payment_message(client_id: str):
         "Ваша оплата прошла успешно, впредь вы можете пользоваться нашим ботом: /start",
     )
 
+
 async def failure_payment_message(client_id: str, status: str):
     try:
         await bot.send_message(
             client_id,
             f"Возникла проблема с оплатой: \n{status}\n Пожалуйста, посмотрите статус оплаты в приложении или на сайте",
         )
-    except: 
+    except:
         pass
 
 

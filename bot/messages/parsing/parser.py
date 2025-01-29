@@ -11,10 +11,10 @@ def get_hash(input_string: str, algorithm: str = "sha256") -> str:
     hash_function.update(input_string.encode("utf-8"))
     return hash_function.hexdigest()
 
+
 def prepare_text(text: str):
     text = (
-        text
-        .strip()
+        text.strip()
         .replace("\\n", "\n")
         .replace(".", "\.")
         .replace("!", "\!")
@@ -23,11 +23,12 @@ def prepare_text(text: str):
         .replace("=", "\=")
         .replace("-", "\-")
         .replace("(", "\(")
-        .replace(")", "\)")        
+        .replace(")", "\)")
     )
     text = re.sub(r"(https?://\S+)_", r"\1\\_", text)
-    
+
     return text
+
 
 def parse_message_tree(file_path: str):
     messages_tree = None
@@ -39,7 +40,7 @@ def parse_message_tree(file_path: str):
 
             parts = line.split("|")
             text = prepare_text(parts[1])
-            
+
             node_id = parts[0].strip()
             short_text = parts[2].strip()
             image_path = get_image_path(parts[3].strip()) if parts[3].strip() else None
