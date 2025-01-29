@@ -251,7 +251,9 @@ async def entrypoint(message: types.Message):
             )
 
 
-async def confirm_create_payment(message: types.Message, confirmation_url: str, greeting: bool = True):
+async def confirm_create_payment(
+    message: types.Message, confirmation_url: str, greeting: bool = True
+):
 
     if greeting_text and greeting:
         await bot.send_message(message.chat.id, greeting_text, parse_mode="MarkdownV2")
