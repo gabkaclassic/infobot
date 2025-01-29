@@ -75,7 +75,7 @@ async def webhook(request: Request):
                 logger.info(
                     f"Send failed cancel payment message for client {target_id} (responsible - {responsible_id}) to YooKassa"
                 )
-                raise HTTPException(status_code=200)
+                return {"status": "ok"}
 
         return {"status": "ok"}
 
