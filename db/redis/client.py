@@ -89,7 +89,7 @@ class PaymentDatabase(RedisDatabase):
         super().__init__(db_number=2)
 
     async def get_key(self, key):
-        result = super().get_key(key)
+        result = await super().get_key(key)
 
         if not isinstance(result, dict):
             result = {"responsible": result, "target_user": result}
@@ -180,7 +180,6 @@ class PaymentManager:
     async def confirm_payment(self, client_id: str, payment_id: str) -> bool:
         logger.info(f"Confirm payment {payment_id} for client {client_id}")
         async with self.users.redis.pipeline(transaction=True) as pipe_users:
-            pipe_users.get()
             payment_entity = json.dumps({"paid": True})
             pipe_users.set(client_id, payment_entity)
 

@@ -12,7 +12,6 @@ from bot.bot import (
     success_payment_for_responsible_message,
 )
 from logger_config import logger
-import json
 
 app = FastAPI()
 

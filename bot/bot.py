@@ -210,6 +210,7 @@ async def handle_give_bot_response(message: types.Message):
         if not confirmation_url:
             await failure_create_payment_message(message)
         await user_states.set_state(message.chat.id, UserState.NONE)
+        await confirm_create_payment(message, confirmation_url, greeting=False)
     except ValueError:
         await message.reply(
             "Неверный формат ID. Пожалуйста, отправьте корректный ID пользователя."
@@ -250,9 +251,9 @@ async def entrypoint(message: types.Message):
             )
 
 
-async def confirm_create_payment(message: types.Message, confirmation_url: str):
+async def confirm_create_payment(message: types.Message, confirmation_url: str, greeting: bool = True):
 
-    if greeting_text:
+    if greeting_text and greeting:
         await bot.send_message(message.chat.id, greeting_text, parse_mode="MarkdownV2")
 
     await bot.send_message(
