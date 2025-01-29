@@ -219,13 +219,14 @@ async def handle_give_bot_response(message: types.Message):
         )
         if not confirmation_url:
             await failure_create_payment_message(message)
-        await user_states.set_state(message.chat.id, UserState.NONE)
         await confirm_create_payment(message, confirmation_url, greeting=False)
     except ValueError:
         await message.reply(
-            "Неверный формат ID. Пожалуйста, отправьте корректный ID пользователя."
+            "Неверный формат ID. Пожалуйста, в следующий раз отправьте корректный ID пользователя."
         )
-
+    finally:
+        await user_states.set_state(message.chat.id, UserState.NONE)
+        
 
 @dp.message(Command("start"))
 async def entrypoint(message: types.Message):
