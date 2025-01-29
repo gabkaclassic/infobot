@@ -6,11 +6,12 @@ from aiogram.filters.command import Command
 from aiogram.types import FSInputFile
 from aiogram.types import InlineKeyboardMarkup
 from dotenv import load_dotenv
-from db.redis.client import payments, add_priveleged_users
+from db.redis.client import payments, add_priveleged_users, user_states, UserState
 from payment.client import create_payment
 from aiogram.types import ContentType
 from bot.setup import handle_text_file
 from bot.messages.parsing.parser import prepare_text
+from aiogram.filters import Filter
 
 load_dotenv()
 
@@ -22,6 +23,11 @@ ADMINS = [int(id) for id in os.environ.get("ADMINS").split(",")]
 enable_setup = os.environ.get("SETUP_ENABLE", "False").lower() == "true"
 enable_payments = os.environ.get("PAYMENT_ENABLE", "True").lower() == "true"
 greeting_text = prepare_text(os.environ.get("GREETING", ""))
+
+
+class GiveBotFilter(Filter):
+    async def __call__(self, message: types.Message) -> bool:
+        return await check_user_gives_bot(message)
 
 
 def get_keyboard_from_choices(choices):
@@ -59,6 +65,13 @@ async def check_payment(message: types.Message) -> bool:
         return False
 
     return paid
+
+async def check_user_gives_bot(message: types.Message) -> bool:
+
+    if not enable_payments:
+        return False
+    
+    return await user_states.check_state(message.chat.id, UserState.GIVE_BOT)    
 
 
 @dp.callback_query(lambda c: True)
@@ -161,10 +174,29 @@ async def send_client_id(message: types.Message):
     await bot.send_message(message.chat.id, f"Your ID: {message.from_user.id}")
 
 
+@dp.message(Command("gift"))
+async def give_bot(message: types.Message):
+    access = await user_states.set_state(message.chat.id, UserState.GIVE_BOT)
+    
+    if access:
+        await message.reply(f'Пожалуйста, пришлите ID пользователя, которому хотите подарить бота:')
+    else:
+        await message.reply(f'Ошибка в работе бота. Пожалуйста, попробуйте позже')
+        
+@dp.message(GiveBotFilter())
+async def handle_give_bot_response(message: types.Message):
+    try:
+        target_user = int(message.text.strip())
+        confirmation_url = await create_payment(message.chat.id, target_user=target_user)
+        if not confirmation_url:
+            await failure_create_payment_message(message)
+        await user_states.set_state(message.chat.id, UserState.NONE)
+    except ValueError:
+        await message.reply('Неверный формат ID. Пожалуйста, отправьте корректный ID пользователя.')
+
 @dp.message(Command("start"))
 async def entrypoint(message: types.Message):
 
-    
     payment_check_result = await check_payment(message)
 
     if not payment_check_result:
@@ -203,13 +235,23 @@ async def confirm_create_payment(message: types.Message, confirmation_url: str):
     )
 
 
+async def success_payment_for_responsible_message(client_id: str):
+    await bot.send_message(
+        client_id,
+        "Ваша оплата прошла успешно, спасибо, что дарите другим людям прекрасное!",
+    )
+
+async def success_payment_for_target_message(client_id: str):
+    await bot.send_message(
+        client_id,
+        "Вам сделали подарок! Впредь вы можете пользоваться нашим ботом: /start",
+    )
+
 async def success_payment_message(client_id: str):
     await bot.send_message(
         client_id,
         "Ваша оплата прошла успешно, впредь вы можете пользоваться нашим ботом: /start",
     )
-
-
 
 async def failure_payment_message(client_id: str, status: str):
     try:

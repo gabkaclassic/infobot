@@ -5,8 +5,9 @@ from yookassa.domain.notification import (
 )
 from yookassa.domain.common import SecurityHelper
 from db.redis.client import payments
-from bot.bot import success_payment_message, failure_payment_message
+from bot.bot import success_payment_message, failure_payment_message, success_payment_for_target_message, success_payment_for_responsible_message
 from logger_config import logger
+import json
 
 app = FastAPI()
 
@@ -29,28 +30,35 @@ async def webhook(request: Request):
     
         payment_status = notification_object.event
         payment_id = get_id_by_status(response_object, payment_status)
-        client_id = await payments.payments.get_key(payment_id) 
+        payment_entity = await payments.payments.get_key(payment_id) 
+        responsible_id = payment_entity.get('responsible')
+        target_id = payment_entity.get('target_user')
         
-        logger.info(f"Payment {payment_id} status: {payment_status} for client {client_id}")
+        
+        logger.info(f"Payment {payment_id} status: {payment_status} for client {target_id} (responsible - {responsible_id})")
 
         if payment_status == WebhookNotificationEventType.PAYMENT_SUCCEEDED:
-            result = await payments.confirm_payment(client_id, payment_id)
-            logger.info(f"Payment {payment_id} confirmation status: {result} for client {client_id}")
+            result = await payments.confirm_payment(target_id, payment_id)
+            logger.info(f"Payment {payment_id} confirmation status: {result} for client {target_id}")
             if result:
-                logger.info(f"Send success payment message for client {client_id}")
-                await success_payment_message(client_id)
+                logger.info(f"Send success payment message for client {target_id} (responsible - {responsible_id})")
+                if target_id == responsible_id:
+                    await success_payment_message(target_id)
+                else:
+                    await success_payment_for_responsible_message(responsible_id)
+                    await success_payment_for_target_message(target_id)
             else:
-                logger.info(f"Cancel payment for client {client_id}")
+                logger.info(f"Cancel payment for client {target_id} (responsible - {responsible_id})")
                 raise HTTPException(status_code=500)
         else:
-            result = await payments.cancel_payment(client_id, payment_id)
-            logger.info(f"Payment {payment_id} cancelation status: {result} for client {client_id}")
+            result = await payments.cancel_payment(target_id, payment_id)
+            logger.info(f"Payment {payment_id} cancelation status: {result} for client {target_id} (responsible - {responsible_id})")
             
             if result:
-                logger.info(f"Cancel payment for client {client_id}")
-                await failure_payment_message(client_id, payment_status)
+                logger.info(f"Cancel payment for client {target_id} (responsible - {responsible_id})")
+                await failure_payment_message(responsible_id, payment_status)
             else:
-                logger.info(f"Send failed cancel payment message for client {client_id} to YooKassa")
+                logger.info(f"Send failed cancel payment message for client {target_id} (responsible - {responsible_id}) to YooKassa")
                 raise HTTPException(status_code=200)
 
         return {"status": "ok"}

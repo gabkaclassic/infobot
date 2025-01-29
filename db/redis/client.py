@@ -3,7 +3,8 @@ import os
 from redis import asyncio as aioredis
 import json, asyncio
 from logger_config import logger
-from typing import Iterable, Union
+from typing import Dict, Iterable, Union
+from enum import Enum
 
 load_dotenv()
 
@@ -89,14 +90,44 @@ class PaymentDatabase(RedisDatabase):
     def __init__(self):
         super().__init__(db_number=2)
 
+    async def get_key(self, key):
+        result = super().get_key(key)
+
+        if not isinstance(result, dict):
+            result = {'responsible': result, 'target_user': result}
+        
+        return result
+        
+
     async def create_payment(self, payment_id: str, client_id: str) -> bool:
         return await self.set_key(payment_id, client_id)
 
-    async def close_payment(self, payment_id: str) -> str:
-        client_id = await self.get_key(payment_id)
+    async def close_payment(self, payment_id: str) -> Dict[str, str]:
+        payment_entity = await self.get_key(payment_id)
+        
+        if not isinstance(payment_entity, dict):
+            payment_entity = {'responsible': payment_entity, 'target_user': payment_entity}
+        
         await self.delete(payment_id)
-        return client_id
+        return payment_entity
 
+class UserState(Enum):
+    NONE = "none"
+    GIVE_BOT = "give_bot"
+
+class UserStateDatabase(RedisDatabase):
+    def __init__(self):
+        super().__init__(db_number=3)
+
+    async def set_state(self, client_id: str, state: UserState) -> bool:
+        return await self.set_key(client_id, state.value)
+
+    async def check_state(self, client_id: str, state: UserState) -> bool:
+        client_state = await self.get_key(client_id)
+        
+        return client_state == state.value
+        
+user_states = UserStateDatabase()
 
 class PaymentManager:
 
@@ -105,15 +136,19 @@ class PaymentManager:
         self.users = UserDatabase()
 
     async def create_payment(
-        self, client_id: str, payment_id: str, confirmation_url: str
+        self, client_id: str, payment_id: str, confirmation_url: str, target_user: str = None
     ) -> str:
-        logger.info(f'Create payment {payment_id} for client {client_id}: {confirmation_url}')
+        target_user = target_user or client_id
+        logger.info(f'Create payment {payment_id} for client {client_id} (target user - {target_user}): {confirmation_url}')
         async with self.payments.redis.pipeline(transaction=True) as pipe_payments:
-            pipe_payments.set(payment_id, client_id)
+            pipe_payments.set(payment_id, json.dumps({ 
+                'target_user': target_user, 
+                'responsible': client_id, 
+            }))
 
             async with self.users.redis.pipeline(transaction=True) as pipe_users:
                 pipe_users.set(
-                    client_id,
+                    target_user,
                     json.dumps({"confirmation_url": confirmation_url, "paid": False}),
                 )
 
@@ -124,12 +159,13 @@ class PaymentManager:
                 if all(results_payments) and all(results_users):
                     return confirmation_url
                 else:
-                    await self.users.cancel_payment(client_id)
+                    await self.users.cancel_payment(target_user)
                     await self.payments.close_payment(payment_id)
 
     async def confirm_payment(self, client_id: str, payment_id: str) -> bool:
         logger.info(f'Confirm payment {payment_id} for client {client_id}')
         async with self.users.redis.pipeline(transaction=True) as pipe_users:
+            pipe_users.get()
             payment_entity = json.dumps({"paid": True})
             pipe_users.set(client_id, payment_entity)
 

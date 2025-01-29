@@ -17,7 +17,7 @@ webhook_url = os.environ.get("PAYMENT_WEBHOOK_URL")
 cost = float(os.environ.get("PAYMENT_COST"))
 
 
-async def create_payment(client_id: str) -> str:
+async def create_payment(client_id: str, target_user: str = None) -> str:
     receipt = Receipt()
     receipt.tax_system_code = 1
     receipt.items = [
@@ -50,7 +50,7 @@ async def create_payment(client_id: str) -> str:
     confirmation_url = payment.get("confirmation", {}).get("confirmation_url")
 
     if confirmation_url:
-        return await payments.create_payment(client_id, payment_id, confirmation_url)
+        return await payments.create_payment(client_id, payment_id, confirmation_url, target_user=target_user)
 
 
 def configure_payment():
