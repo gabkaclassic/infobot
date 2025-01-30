@@ -198,7 +198,14 @@ class PaymentManager:
         if not client_id:
             return False
 
+        payment_entity = await self.users.get_key(client_id)
+        
+        if payment_entity and payment_entity.get('paid'):
+            logger.info(f"Cancel payment {payment_id} for client {client_id} canceled: payment already has successfull status")
+            return False
+
         async with self.users.redis.pipeline(transaction=True) as pipe_users:
+            
             pipe_users.set(client_id, json.dumps({"paid": False}))
 
             async with self.payments.redis.pipeline(transaction=True) as pipe_payments:
