@@ -23,6 +23,7 @@ ADMINS = [int(id) for id in os.environ.get("ADMINS").split(",")]
 enable_setup = os.environ.get("SETUP_ENABLE", "False").lower() == "true"
 enable_payments = os.environ.get("PAYMENT_ENABLE", "True").lower() == "true"
 greeting_text = prepare_text(os.environ.get("GREETING", ""))
+get_id_instruction = prepare_text(os.environ.get("GET_ID_INSTRUCTION", ""))
 
 
 class GiveBotFilter(Filter):
@@ -199,7 +200,9 @@ async def give_bot(message: types.Message):
 
     if access:
         await message.reply(
-            f"Пожалуйста, пришлите ID пользователя, которому хотите подарить бота:"
+            get_id_instruction,
+            protect_content=False,
+            parse_mode="MarkdownV2"
         )
     else:
         await message.reply(f"Ошибка в работе бота. Пожалуйста, попробуйте позже")
