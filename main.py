@@ -1,17 +1,25 @@
 import asyncio
 import logging
-import os
 
 from dotenv import load_dotenv
 
+load_dotenv()
+
+from config import env_bool, env_str
 from bot.bot import start_bot
 from payment.app import start_app
 
-load_dotenv()
+# Уровень должен настраиваться здесь: basicConfig не переопределяет root-логгер,
+# у которого уже есть обработчики, поэтому вызов из импортируемого модуля
+# молча выиграл бы у этого.
+log_level = env_str("LOG_LEVEL", "INFO").upper()
 
-logging.basicConfig(level=logging.INFO)
+if log_level not in logging._nameToLevel:
+    log_level = "INFO"
 
-enable_payments = os.environ.get("PAYMENT_ENABLE", "True").lower() == "true"
+logging.basicConfig(level=log_level)
+
+enable_payments = env_bool("PAYMENT_ENABLE", True)
 
 
 async def main():

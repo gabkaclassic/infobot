@@ -3,8 +3,6 @@ from utils.image_utils import prepare_image, get_image_path
 import hashlib
 import re
 
-nodes_ids = dict()
-
 
 def get_hash(input_string: str, algorithm: str = "sha256") -> str:
     hash_function = hashlib.new(algorithm)
@@ -16,14 +14,14 @@ def prepare_text(text: str):
     text = (
         text.strip()
         .replace("\\n", "\n")
-        .replace(".", "\.")
-        .replace("!", "\!")
-        .replace("#", "\#")
-        .replace("+", "\+")
-        .replace("=", "\=")
-        .replace("-", "\-")
-        .replace("(", "\(")
-        .replace(")", "\)")
+        .replace(".", r"\.")
+        .replace("!", r"\!")
+        .replace("#", r"\#")
+        .replace("+", r"\+")
+        .replace("=", r"\=")
+        .replace("-", r"\-")
+        .replace("(", r"\(")
+        .replace(")", r"\)")
     )
     text = re.sub(r"(https?://\S+)_", r"\1\\_", text)
 
@@ -31,7 +29,10 @@ def prepare_text(text: str):
 
 
 def parse_message_tree(file_path: str):
+    # Словарь локальный: иначе идентификаторы старого дерева накапливались бы
+    # между перезагрузками, а частично разобранный битый файл засорял бы карту.
     messages_tree = None
+    nodes_ids = dict()
 
     with open(file_path, "r", encoding="utf-8") as file:
         for line in file:

@@ -3,12 +3,16 @@ venv
 test.py
 test
 trees/*
+!trees/.gitkeep
 .env
 *.pyc
+__pycache__/
+.pytest_cache/
 *.jpg
 *.idea
 *.gigaide
 redisdata
 logs/*
+!logs/.gitkeep
 *.log
 *.sh

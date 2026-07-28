@@ -1,0 +1,34 @@
+# Секреты в образ не попадают: конфигурация приходит через env_file.
+.env
+
+# Каталоги с данными монтируются с хоста.
+trees/
+images/
+logs/
+redisdata/
+
+venv/
+.venv/
+.git/
+.gitignore
+.idea/
+.gigaide/
+__pycache__/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+tests/
+pytest.ini
+requirements-dev.txt
+*.log
+*.sh
+test.py
+README.md
+
+# Не нужны в рантайме.
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Каталог-пустышка в корне проекта; рабочий пакет лежит в bot/messages.
+messages/

@@ -1,4 +1,3 @@
-import logging
 import os
 
 from aiogram import Bot, Dispatcher, types
@@ -6,7 +5,9 @@ from aiogram.filters.command import Command
 from aiogram.types import FSInputFile
 from aiogram.types import InlineKeyboardMarkup
 from dotenv import load_dotenv
+from config import env_bool, env_int_list, env_str
 from db.redis.client import payments, add_priveleged_users, user_states, UserState
+from logger_config import logger
 from payment.client import create_payment
 from aiogram.types import ContentType
 from bot.setup import handle_text_file
@@ -15,15 +16,13 @@ from aiogram.filters import Filter
 
 load_dotenv()
 
-logging.basicConfig(level=logging.DEBUG)
-
-bot = Bot(token=os.environ.get("BOT_TOKEN"))
+bot = Bot(token=env_str("BOT_TOKEN", required=True))
 dp = Dispatcher()
-ADMINS = [int(id) for id in os.environ.get("ADMINS").split(",")]
-enable_setup = os.environ.get("SETUP_ENABLE", "False").lower() == "true"
-enable_payments = os.environ.get("PAYMENT_ENABLE", "True").lower() == "true"
-greeting_text = prepare_text(os.environ.get("GREETING", ""))
-get_id_instruction = prepare_text(os.environ.get("GET_ID_INSTRUCTION", ""))
+ADMINS = env_int_list("ADMINS")
+enable_setup = env_bool("SETUP_ENABLE", False)
+enable_payments = env_bool("PAYMENT_ENABLE", True)
+greeting_text = prepare_text(env_str("GREETING", ""))
+get_id_instruction = prepare_text(env_str("GET_ID_INSTRUCTION", ""))
 
 
 class GiveBotFilter(Filter):
@@ -45,11 +44,16 @@ def get_keyboard_from_choices(choices):
     return reply_markup
 
 async def check_payment_by_user_id(client_id: str) -> bool:
+    """Возвращает None, если база недоступна: отсутствие записи об оплате в этом
+    случае не означает, что пользователь не оплачивал."""
     payment_info = await payments.users.get_payment_info(client_id)
-    paid = payment_info.get("paid", False)
-    
-    return paid 
-    
+
+    if payment_info is None:
+        return None
+
+    return payment_info.get("paid", False)
+
+
 async def check_payment(message: types.Message) -> bool:
 
     if not enable_payments:
@@ -57,6 +61,12 @@ async def check_payment(message: types.Message) -> bool:
 
     client_id = str(message.chat.id)
     payment_info = await payments.users.get_payment_info(client_id)
+
+    if payment_info is None:
+        logger.error(f"Payment check for client {client_id} failed: database is unavailable")
+        await failure_create_payment_message(message)
+        return False
+
     paid = payment_info.get("paid", False)
     confirmation_url = payment_info.get("confirmation_url", False)
 
@@ -119,7 +129,7 @@ async def handle_callback_query(call: types.CallbackQuery):
                     protect_content=True,
                 )
     except Exception as e:
-        logging.error(f"Error handling callback query: {e}")
+        logger.error(f"Error handling callback query: {e}", exc_info=True)
         await call.answer(
             text="An error occurred, please try again later.", protect_content=True
         )
@@ -175,18 +185,20 @@ async def handle_admin_commands(message: types.Message):
     if user_id not in ADMINS:
         return
 
-    try:
-        text = message.text
-        cmd = text.split(" ")
-        if len(cmd) > 1:
-            arguments = cmd[1:]
+    arguments = message.text.split()[1:]
 
+    if not arguments:
+        await message.reply("Использование: /free ID1 ID2 ...")
+        return
+
+    try:
         ids = {int(arg) for arg in arguments}
         await add_priveleged_users(ids)
         await message.reply(f'Пользователи успешно добавлены: {", ".join(arguments)}')
 
     except Exception as e:
-        await message.reply(f"Ошибка выполнения команды")
+        logger.error(f"Command /free failed: {e}", exc_info=True)
+        await message.reply("Ошибка выполнения команды")
 
 
 @dp.message(Command("id"))
@@ -212,16 +224,26 @@ async def give_bot(message: types.Message):
 async def handle_give_bot_response(message: types.Message):
     try:
         target_user = int(message.text.strip())
-        
-        if await check_payment_by_user_id(str(target_user)):
+
+        target_paid = await check_payment_by_user_id(str(target_user))
+
+        if target_paid is None:
+            logger.error(
+                f"Gift check for target {target_user} failed: database is unavailable"
+            )
+            await failure_create_payment_message(message)
+            return
+
+        if target_paid:
             await message.reply('У пользователя с данным ID уже куплен бот')
             return
-        
+
         confirmation_url = await create_payment(
             message.chat.id, target_user=target_user
         )
         if not confirmation_url:
             await failure_create_payment_message(message)
+            return
         await confirm_create_payment(message, confirmation_url, greeting=False)
     except ValueError:
         await message.reply(
@@ -305,8 +327,11 @@ async def failure_payment_message(client_id: str, status: str):
             client_id,
             f"Возникла проблема с оплатой: \n{status}\n Пожалуйста, посмотрите статус оплаты в приложении или на сайте",
         )
-    except:
-        pass
+    except Exception as e:
+        logger.error(
+            f"Failed to send failure payment message to client {client_id}: {e}",
+            exc_info=True,
+        )
 
 
 async def failure_create_payment_message(message: types.Message):
@@ -321,7 +346,7 @@ async def start_bot():
 
     from bot.messages.parsing.parser import parse_message_tree
 
-    tree_path = os.environ.get("TREE_PATH")
+    tree_path = env_str("TREE_PATH", required=True)
     messages_tree, nodes_ids = parse_message_tree(tree_path)
 
     await dp.start_polling(bot)

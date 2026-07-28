@@ -1,6 +1,10 @@
 import logging
-from logging.handlers import RotatingFileHandler
 import os
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+LOG_DIR = Path(os.environ.get("LOG_DIR") or BASE_DIR / "logs")
 
 
 def setup_logger(name, log_file, level=logging.INFO):
@@ -8,8 +12,10 @@ def setup_logger(name, log_file, level=logging.INFO):
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
 
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+
     handler = RotatingFileHandler(
-        os.path.join("logs", log_file), maxBytes=500 * 1024, backupCount=3
+        LOG_DIR / log_file, maxBytes=500 * 1024, backupCount=3
     )
     handler.setFormatter(formatter)
 
@@ -20,6 +26,8 @@ def setup_logger(name, log_file, level=logging.INFO):
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
+
+    logger.propagate = False
 
     return logger
 

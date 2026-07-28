@@ -1,10 +1,58 @@
-version: '3.9'
-
 services:
   redis:
     image: redis
     container_name: infobot_redis
+    restart: unless-stopped
+    # DB_PASSWORD подставляется из .env самим compose. env_file здесь не нужен и
+    # прокинул бы в контейнер весь .env вместе с токеном бота и секретом ЮKassa.
+    # Пустое значение означало бы --requirepass "" и Redis без защиты, поэтому
+    # переменная обязательна. DB_USER при этом остаётся пустым.
+    environment:
+      # Пароль для redis-cli в healthcheck — через переменную, а не аргументом.
+      REDISCLI_AUTH: ${DB_PASSWORD:?Задайте DB_PASSWORD в .env}
+    # Персистентность оставлена как была — снимки RDB. Включать --appendonly yes
+    # на каталоге с готовым dump.rdb нельзя: Redis загрузит пустой AOF и молча
+    # поднимется с чистой базой, потеряв записи об оплатах. Если AOF всё же
+    # нужен, его включают на живом сервере через CONFIG SET appendonly yes.
+    command:
+      - redis-server
+      - --requirepass
+      - ${DB_PASSWORD:?Задайте DB_PASSWORD в .env}
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - ./redisdata:/data
+    # Ответ сверяется с PONG: сам по себе redis-cli возвращает код 0 даже когда
+    # аутентификация не прошла, и такая проверка считала бы Redis здоровым.
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  bot:
+    build:
+      context: .
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    image: infobot
+    container_name: infobot
+    restart: unless-stopped
+    # Контейнер делит сетевой стек с хостом. Это нужно проверке IP ЮKassa:
+    # в bridge-сети uvicorn видел бы адрес шлюза docker, не признал бы его
+    # доверенным прокси и отклонил бы все вебхуки. Заодно DB_HOST=localhost
+    # из .env продолжает указывать на опубликованный порт Redis.
+    network_mode: host
+    env_file:
+      - .env
+    # Дерево загружается администратором в рантайме, картинки и логи ведёт
+    # оператор — всё это данные, а не часть образа.
+    volumes:
+      - ./trees:/app/trees
+      - ./images:/app/images
+      - ./logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy

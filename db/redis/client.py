@@ -1,17 +1,17 @@
 from dotenv import load_dotenv
-import os
 from redis import asyncio as aioredis
 import json, asyncio
+from config import env_int, env_list, env_str
 from logger_config import logger
 from typing import Dict, Iterable, Union
 from enum import Enum
 
 load_dotenv()
 
-host = os.environ.get("DB_HOST")
-port = int(os.environ.get("DB_PORT"))
-user = os.environ.get("DB_USER")
-password = os.environ.get("DB_PASSWORD")
+host = env_str("DB_HOST", "localhost")
+port = env_int("DB_PORT", 6379)
+user = env_str("DB_USER")
+password = env_str("DB_PASSWORD")
 
 connection_string = f"redis://{host}:{port}"
 
@@ -35,11 +35,18 @@ class RedisDatabase:
             return False
 
     async def get_key(self, key):
+        """Возвращает значение ключа.
+
+        Пустой dict — ключа нет, None — база недоступна. Вызывающий код обязан
+        различать эти случаи: на None нельзя ни выдавать доступ, ни создавать
+        новый платёж.
+        """
         try:
             value = await self.redis.get(key)
             return json.loads(value) if value else dict()
         except Exception as e:
             logger.error(f"Get key error: {e}", exc_info=True)
+            return None
 
     async def delete(self, key):
         try:
@@ -71,6 +78,8 @@ class UserDatabase(RedisDatabase):
 
     async def confirm_payment(self, client_id: str) -> bool:
         info = await self.get_key(client_id)
+        if info is None:
+            return False
         info["paid"] = True
         if "confirmation_url" in info:
             del info["confirmation_url"]
@@ -78,6 +87,8 @@ class UserDatabase(RedisDatabase):
 
     async def cancel_payment(self, client_id: str) -> bool:
         info = await self.get_key(client_id)
+        if info is None:
+            return False
         info["paid"] = False
         if "confirmation_url" in info:
             del info["confirmation_url"]
@@ -90,6 +101,9 @@ class PaymentDatabase(RedisDatabase):
 
     async def get_key(self, key):
         result = await super().get_key(key)
+
+        if result is None:
+            return None
 
         if not isinstance(result, dict):
             result = {"responsible": result, "target_user": result}
@@ -199,13 +213,21 @@ class PaymentManager:
             return False
 
         payment_entity = await self.users.get_key(client_id)
-        
-        if payment_entity and payment_entity.get('paid'):
-            logger.info(f"Cancel payment {payment_id} for client {client_id} canceled: payment already has successfull status")
+
+        if payment_entity is None:
+            logger.error(
+                f"Cancel payment {payment_id} for client {client_id} skipped: database is unavailable"
+            )
+            return False
+
+        if payment_entity.get("paid"):
+            logger.info(
+                f"Cancel payment {payment_id} for client {client_id} canceled: payment already has successfull status"
+            )
             return False
 
         async with self.users.redis.pipeline(transaction=True) as pipe_users:
-            
+
             pipe_users.set(client_id, json.dumps({"paid": False}))
 
             async with self.payments.redis.pipeline(transaction=True) as pipe_payments:
@@ -229,7 +251,7 @@ async def check_db():
 
 
 async def initialize_db():
-    privileged_users = os.environ.get("PAYMENT_PRIVILEGED_USERS").split(",")
+    privileged_users = env_list("PAYMENT_PRIVILEGED_USERS")
     await add_priveleged_users(privileged_users)
 
 
