@@ -323,6 +323,53 @@ pytest
 `fakeredis`, ЮKassa и Telegram — моками. Переменные окружения задаёт
 `tests/conftest.py`, файл `.env` при этом не используется.
 
+## CI/CD
+
+Workflow `.github/workflows/ci.yml`:
+
+| Когда | Что происходит |
+|-------|----------------|
+| пуш в любую ветку, PR в `master` или `dev` | прогон тестов на Python 3.12 |
+| публикация GitHub Release | тесты, затем сборка и публикация образа |
+
+Образ публикуется только после зелёных тестов — задача сборки объявляет
+`needs: tests`. Перед публикацией образ запускается локально в раннере
+(`python -c "import main"`): это ловит случай, когда `.dockerignore` исключил
+нужный файл или зависимость не поставилась.
+
+Каждый прогон тестов сохраняет артефакт `pip-freeze` с точным составом
+окружения — заменяет lock-файл при разборе «на чём собиралось».
+
+### Тег образа
+
+`ghcr.io/gabkaclassic/infobot:<ветка>-<версия>`, например `master-v1.4.0`.
+Ветка берётся из `target_commitish` релиза, версия — из его тега. Логика вынесена
+в `.github/scripts/image-tag.sh`, её можно прогнать локально:
+
+```bash
+GITHUB_REPOSITORY=gabkaclassic/infobot RELEASE_TAG=v1.4.0 \
+RELEASE_TARGET=dev DEFAULT_BRANCH=master bash .github/scripts/image-tag.sh
+```
+
+Слеши в именах веток заменяются на дефисы. Если `target_commitish` содержит SHA
+вместо имени ветки (так бывает при создании релиза через API), подставляется
+ветка по умолчанию. Тег, не подходящий под маску Docker, роняет сборку, а не
+уезжает в реестр.
+
+### Как забрать образ
+
+Пакет в GHCR создаётся приватным. Либо сделайте его публичным в настройках
+пакета на GitHub, либо авторизуйтесь на сервере токеном с правом
+`read:packages`:
+
+```bash
+echo "$GITHUB_TOKEN" | docker login ghcr.io -u <логин> --password-stdin
+docker pull ghcr.io/gabkaclassic/infobot:master-v1.4.0
+```
+
+Отдельного секрета для публикации заводить не нужно: workflow использует штатный
+`GITHUB_TOKEN` с правом `packages: write`.
+
 ## Логи
 
 Пишутся одновременно в stdout и в `logs/log.log` с ротацией: до 500 КБ на файл,

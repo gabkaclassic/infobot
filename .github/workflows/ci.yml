@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  # Только ветки: голый push сработал бы и на пуш тега, дублируя прогон релиза.
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [master, dev]
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  # Устаревшие прогоны веток отменяются, релизные — никогда.
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'release' }}
+
+jobs:
+  tests:
+    name: Тесты
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Та же версия, что в Dockerfile: на 3.13 закреплённые aiohttp и yookassa
+      # собираются из исходников и потребовали бы компилятор.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Установка зависимостей
+        run: pip install '.[dev]'
+
+      # Секреты и Redis не нужны: tests/conftest.py выставляет окружение сам,
+      # Redis подменяется на fakeredis, ЮKassa и Telegram — моками.
+      - name: Тесты
+        run: pytest
+
+      # Lock-файла у проекта нет, поэтому фиксируем фактический состав окружения:
+      # по артефакту видно, на каких версиях транзитивных зависимостей прогон
+      # был зелёным.
+      - name: Состав окружения
+        if: always()
+        run: pip freeze > pip-freeze.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pip-freeze
+          path: pip-freeze.txt
+
+  image:
+    name: Образ
+    needs: tests
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Имя и тег образа
+        id: meta
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TARGET: ${{ github.event.release.target_commitish }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: bash .github/scripts/image-tag.sh | tee -a "$GITHUB_OUTPUT"
+
+      # Значения идут через env, а не подставляются в тело скрипта: данные
+      # события в run: подставлять нельзя даже после валидации.
+      - name: Что публикуем
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          echo "Образ: \`${IMAGE}:${TAG}\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Сборка и публикация разнесены, чтобы заведомо нерабочий образ не попал
+      # в реестр: сначала собираем локально, проверяем запуск, только потом пушим.
+      - name: Сборка
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=${{ github.event.repository.html_url }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Ловит случай, когда .dockerignore исключил нужное или зависимость не
+      # поставилась. Переменные подставные, в сеть шаг не ходит: Bot(token=...)
+      # только конструирует объект, но формат токена aiogram проверяет.
+      - name: Проверка запуска образа
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}
+        run: |
+          docker run --rm \
+            -e BOT_TOKEN=123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw \
+            -e TREE_PATH=./trees/tree.txt \
+            -e PAYMENT_COST=1.0 \
+            "$IMAGE" python -c "import main"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Слои уже собраны и лежат в кэше, шаг фактически только выгружает их.
+      - name: Публикация
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=${{ github.event.repository.html_url }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
