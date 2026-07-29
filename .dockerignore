@@ -17,9 +17,13 @@ __pycache__/
 **/__pycache__/
 *.pyc
 .pytest_cache/
+
+# Артефакты setuptools от локального pip install. Паттерн без завершающего
+# слеша: со слешем docker его не сопоставляет.
+*.egg-info
+build/
+dist/
 tests/
-pytest.ini
-requirements-dev.txt
 *.log
 *.sh
 test.py

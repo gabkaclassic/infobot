@@ -29,6 +29,7 @@ Telegram-бот, который продаёт доступ к дереву ин
 main.py              точка входа
 config.py            чтение переменных окружения с валидацией
 logger_config.py     файловый логгер с ротацией
+pyproject.toml       зависимости и настройки pytest
 Dockerfile           образ приложения
 docker-compose.yml   сервисы bot и redis
 bot/
@@ -253,11 +254,23 @@ UID=$(id -u) GID=$(id -g) docker compose build
 ```bash
 python -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install .
 
 docker compose up -d redis
 python main.py
 ```
+
+## Зависимости
+
+Объявлены в `pyproject.toml`: семь прямых в `[project.dependencies]` и четыре для
+разработки в группе `dev`. Транзитивные разрешает pip, lock-файла нет — то есть
+точные версии зависимостей второго уровня со временем меняются. Состав конкретной
+сборки можно восстановить по артефакту `pip freeze`, который сохраняет каждый
+прогон CI.
+
+`[tool.setuptools] packages = []` — не опечатка: infobot запускается из каталога
+с исходниками и в `site-packages` не ставится, поэтому `pip install .`
+устанавливает только зависимости.
 
 ## Развёртывание за реверс-прокси
 
@@ -302,7 +315,7 @@ trusted list` — по ней проверяется, что заголовок 
 ## Тесты
 
 ```bash
-pip install -r requirements-dev.txt
+pip install '.[dev]'
 pytest
 ```
 
